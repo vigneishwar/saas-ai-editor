@@ -1,6 +1,7 @@
 package com.viki.projects.saas_ai_editor.entity;
 
 
+import com.viki.projects.saas_ai_editor.enums.SubscriptionStatus;
 import jakarta.persistence.Entity;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
