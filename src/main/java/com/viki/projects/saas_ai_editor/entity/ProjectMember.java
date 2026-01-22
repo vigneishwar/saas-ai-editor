@@ -1,5 +1,7 @@
 package com.viki.projects.saas_ai_editor.entity;
 
+import com.viki.projects.saas_ai_editor.enums.ProjectRole;
+
 import java.time.Instant;
 
 public class ProjectMember {
