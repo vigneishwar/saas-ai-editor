@@ -3,6 +3,7 @@ package com.viki.projects.saas_ai_editor.service.impl;
 import com.viki.projects.saas_ai_editor.dto.subscription.PlanLimitResponse;
 import com.viki.projects.saas_ai_editor.dto.subscription.UsageTodayResponse;
 import com.viki.projects.saas_ai_editor.service.UsageService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 @Service
