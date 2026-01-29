@@ -1,9 +1,8 @@
 package com.viki.projects.saas_ai_editor.entity;
-import jakarta.persistence.Entity;
-import lombok.Data;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import jakarta.persistence.*;
+import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.Instant;
 
@@ -11,21 +10,29 @@ import java.time.Instant;
 @Entity
 @Getter
 @Setter
+@AllArgsConstructor
 @NoArgsConstructor
+@Builder
+@Table(name = "users")
 public class User {
 
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private String email;
 
     private String password_hash;
 
+    @Column(nullable = false)
     private String name;
 
     private String avatar_url;
 
+    @CreationTimestamp
     private Instant created_at;
 
+    @UpdateTimestamp
     private Instant updated_at;
 
     private Instant deleted_at;

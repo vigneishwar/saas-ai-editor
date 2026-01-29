@@ -1,3 +1,23 @@
 spring:
   application:
     name: saas-ai-editor
+
+  datasource:
+    url: jdbc:postgresql://localhost:9000/testDB
+    username: testUser
+    password: password
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  logging:
+    level:
+      org.hibernate.tool.schema: DEBUG
+      org.hibernate.SQL: DEBUG
