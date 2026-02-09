@@ -16,6 +16,7 @@ import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -29,7 +30,14 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     public List<ProjectSummaryResponse> getProjectsByUserId(Long userId) {
-        return null;
+        // one way to convert List<Project> to List<ProjectSummaryResponse> is to use stream and map each Project to ProjectSummaryResponse using the mapper
+//        return projectRepository.findAllAccessibleByUser(userId)
+//                .stream()
+//                .map(projectMapper::toProjectSummaryResponse) // Convert each Project entity to a ProjectSummaryResponse DTO
+//                .toList();
+
+        // another way is to add a method in the mapper that takes a List<Project> and returns a List<ProjectSummaryResponse>
+        return projectMapper.toProjectSummaryResponse(projectRepository.findAllAccessibleByUser(userId));
     }
 
     @Override
@@ -44,6 +52,7 @@ public class ProjectServiceImpl implements ProjectService {
         Project project = Project.builder()
                 .name(request.name()) // name is coming from request
                 .owner(owner) // owner is the user creating the project
+                .isPublic(false)
                 .build();
         project = projectRepository.save(project);
         return projectMapper.toProjectResponse(project); // this will convert the Project entity to a ProjectResponse DTO
