@@ -42,7 +42,8 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     public ProjectResponse getProjectById(Long id, Long userId) {
-        return null;
+        Project project = getAccessibleProjectById(id, userId); // fetch the project with the given id and check if the user has access to it
+        return projectMapper.toProjectResponse(project);
     }
 
     @Override
@@ -60,11 +61,33 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     public ProjectResponse updateProject(Long id, ProjectRequest request, Long userId) {
-        return null;
+        Project project = getAccessibleProjectById(id, userId); // fetch the project with the given id and check if the user has access to it
+
+        if (!project.getOwner().getId().equals(userId)) {
+            throw new RuntimeException("Only the owner can update the project");
+        }
+
+        project.setName(request.name()); // update the name of the project with the name coming from request
+        project = projectRepository.save(project); // save the updated project to the database
+        return projectMapper.toProjectResponse(project); // convert the updated Project entity to a ProjectResponse DTO and return it
     }
 
     @Override
     public void softDeleteProject(Long id, Long userId) {
+        Project project = getAccessibleProjectById(id, userId);
 
+        if (!project.getOwner().getId().equals(userId)) {
+            throw new RuntimeException("Only the owner can delete the project");
+        }
+        project.setDeletedAt(java.time.Instant.now()); // set the deletedAt field to the current timestamp to mark the project as deleted
+        projectRepository.save(project); // save the updated project to the database
+
+    }
+
+    // This is a helper method to fetch a project by id and check if the user has access to it.
+    // If the project is not found or the user does not have access, it will throw an exception.
+    private Project getAccessibleProjectById(Long id, Long userId) {
+        return projectRepository.findAccessibleProjectById(id, userId)
+                .orElseThrow(() -> new RuntimeException("Project not found or access denied"));
     }
 }
