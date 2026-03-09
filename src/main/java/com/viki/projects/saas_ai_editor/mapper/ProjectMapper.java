@@ -1,9 +1,11 @@
 package com.viki.projects.saas_ai_editor.mapper;
 
 
+import com.viki.projects.saas_ai_editor.dto.member.MemberResponse;
 import com.viki.projects.saas_ai_editor.dto.project.ProjectResponse;
 import com.viki.projects.saas_ai_editor.dto.project.ProjectSummaryResponse;
 import com.viki.projects.saas_ai_editor.entity.Project;
+import com.viki.projects.saas_ai_editor.entity.User;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
