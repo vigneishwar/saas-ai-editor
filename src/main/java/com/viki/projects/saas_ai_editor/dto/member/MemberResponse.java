@@ -5,10 +5,9 @@ import com.viki.projects.saas_ai_editor.enums.ProjectRole;
 import java.time.Instant;
 
 public record MemberResponse(
-        Long id,
+        Long userId,
         String email,
         String name,
-        String avatarUrl,
         ProjectRole role,
         Instant invitedAt
 ) {
