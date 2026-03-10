@@ -79,12 +79,37 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
 
     @Override
     public MemberResponse updateMemberRole(Long projectId, Long memberId, UpdateRoleRequest request, Long userId) {
-        return null;
+
+        Project project = getAccessibleProjectById(projectId, userId); // check if the user has access to the project
+
+        if(!project.getOwner().getId().equals(userId)){
+            throw new RuntimeException("Only project owner can invite members");
+        }
+
+        ProjectMemberId projectMemberId = new ProjectMemberId(projectId, memberId);
+        ProjectMember member = projectMemberRepository.findById(projectMemberId)
+                .orElseThrow(() -> new RuntimeException("Project member not found"));
+
+        member.setRole(request.role());
+        member = projectMemberRepository.save(member);
+        return projectMemberMapper.toMemberResponseFromMember(member);
     }
 
     @Override
-    public MemberResponse deleteProjectMember(Long projectId, Long memberId, Long userId) {
-        return null;
+    public void removeProjectMember(Long projectId, Long memberId, Long userId) {
+
+        Project project = getAccessibleProjectById(projectId, userId); // check if the user has access to the project
+
+        if(!project.getOwner().getId().equals(userId)){
+            throw new RuntimeException("Only project owner can delete members");
+        }
+
+        ProjectMemberId projectMemberId = new ProjectMemberId(projectId, memberId);
+        if(!projectMemberRepository.existsById(projectMemberId)){
+            throw new RuntimeException("Project member not found");
+        }
+
+        projectMemberRepository.deleteById(projectMemberId);
     }
 
     private Project getAccessibleProjectById(Long id, Long userId) {
