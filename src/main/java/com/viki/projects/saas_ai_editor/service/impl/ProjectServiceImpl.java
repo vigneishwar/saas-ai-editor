@@ -1,11 +1,17 @@
 package com.viki.projects.saas_ai_editor.service.impl;
 
+import com.viki.projects.saas_ai_editor.dto.member.InviteMemberRequest;
 import com.viki.projects.saas_ai_editor.dto.project.ProjectRequest;
 import com.viki.projects.saas_ai_editor.dto.project.ProjectResponse;
 import com.viki.projects.saas_ai_editor.dto.project.ProjectSummaryResponse;
 import com.viki.projects.saas_ai_editor.entity.Project;
+import com.viki.projects.saas_ai_editor.entity.ProjectMember;
+import com.viki.projects.saas_ai_editor.entity.ProjectMemberId;
 import com.viki.projects.saas_ai_editor.entity.User;
+import com.viki.projects.saas_ai_editor.enums.ProjectRole;
+import com.viki.projects.saas_ai_editor.error.ResourceNotFoundException;
 import com.viki.projects.saas_ai_editor.mapper.ProjectMapper;
+import com.viki.projects.saas_ai_editor.repository.ProjectMemberRepository;
 import com.viki.projects.saas_ai_editor.repository.ProjectRepository;
 import com.viki.projects.saas_ai_editor.repository.UserRepository;
 import com.viki.projects.saas_ai_editor.service.ProjectService;
@@ -15,6 +21,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.List;
 
 @Service
@@ -26,6 +33,7 @@ public class ProjectServiceImpl implements ProjectService {
     ProjectRepository projectRepository;
     UserRepository userRepository;
     ProjectMapper projectMapper;
+    ProjectMemberRepository projectMemberRepository;
 
     @Override
     public List<ProjectSummaryResponse> getProjectsByUserId(Long userId) {
@@ -47,24 +55,30 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     public ProjectResponse createProject(ProjectRequest request, Long userId) {
-        User owner = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
+        User owner = userRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User", userId.toString()));
 
         Project project = Project.builder()
                 .name(request.name()) // name is coming from request
-                .owner(owner) // owner is the user creating the project
                 .isPublic(false)
                 .build();
         project = projectRepository.save(project);
+
+        ProjectMemberId projectMemberId = new ProjectMemberId(project.getId(), owner.getId());
+        ProjectMember projectMember = ProjectMember.builder()
+                .id(projectMemberId)
+                .project(project)
+                .user(owner)
+                .role(ProjectRole.OWNER)
+                .acceptedAt(Instant.now())
+                .invitedAt(Instant.now())
+                .build();
+        projectMemberRepository.save(projectMember);
         return projectMapper.toProjectResponse(project); // this will convert the Project entity to a ProjectResponse DTO
     }
 
     @Override
     public ProjectResponse updateProject(Long id, ProjectRequest request, Long userId) {
         Project project = getAccessibleProjectById(id, userId); // fetch the project with the given id and check if the user has access to it
-
-        if (!project.getOwner().getId().equals(userId)) {
-            throw new RuntimeException("Only the owner can update the project");
-        }
 
         project.setName(request.name()); // update the name of the project with the name coming from request
         project = projectRepository.save(project); // save the updated project to the database
@@ -74,10 +88,6 @@ public class ProjectServiceImpl implements ProjectService {
     @Override
     public void softDeleteProject(Long id, Long userId) {
         Project project = getAccessibleProjectById(id, userId);
-
-        if (!project.getOwner().getId().equals(userId)) {
-            throw new RuntimeException("Only the owner can delete the project");
-        }
         project.setDeletedAt(java.time.Instant.now()); // set the deletedAt field to the current timestamp to mark the project as deleted
         projectRepository.save(project); // save the updated project to the database
 
@@ -87,6 +97,6 @@ public class ProjectServiceImpl implements ProjectService {
     // If the project is not found or the user does not have access, it will throw an exception.
     private Project getAccessibleProjectById(Long id, Long userId) {
         return projectRepository.findAccessibleProjectById(id, userId)
-                .orElseThrow(() -> new RuntimeException("Project not found or access denied"));
+                .orElseThrow(() -> new ResourceNotFoundException("Project", id.toString()));
     }
 }
