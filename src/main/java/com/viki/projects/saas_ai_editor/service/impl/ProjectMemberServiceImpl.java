@@ -46,8 +46,8 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
 
         Project project = getAccessibleProjectById(projectId, userId); // check if the user has access to the project
 
-        User invitee = userRepository.findByEmail(request.email())
-                .orElseThrow(() -> new RuntimeException("User with email " + request.email() + " not found"));
+        User invitee = userRepository.findByUsername(request.username())
+                .orElseThrow(() -> new RuntimeException("User with email " + request.username() + " not found"));
 
         if(invitee.getId().equals(userId)){
             throw new RuntimeException("User cannot invite yourself");
