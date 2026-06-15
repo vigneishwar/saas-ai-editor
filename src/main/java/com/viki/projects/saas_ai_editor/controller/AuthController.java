@@ -38,5 +38,4 @@ public class AuthController {
         Long userId = 1L; // Placeholder for authenticated user ID
         return ResponseEntity.ok(userService.getUserProfile(userId));
     }
-
 }
