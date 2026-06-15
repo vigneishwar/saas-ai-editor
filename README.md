@@ -18,6 +18,7 @@
 - [Highlights for Reviewers](#highlights-for-reviewers)
 - [Tech Stack](#tech-stack)
 - [System Architecture](#system-architecture)
+- [System Design & Design Decisions](#system-design--design-decisions)
 - [Authentication Deep-Dive](#authentication-deep-dive)
 - [Domain Model](#domain-model)
 - [API Reference](#api-reference)
@@ -119,6 +120,70 @@ flowchart LR
 | `enums` | Domain enums (`ProjectRole`, `MessageRole`, …) |
 | `security` | JWT, `UserDetails` adapter, `SecurityConfig` |
 | `error` | `ApiError`, domain exceptions, global handler |
+
+---
+
+## System Design & Design Decisions
+
+The design follows a **modular monolith**: a single deployable Spring Boot service, internally split into clear layers and domain packages. At this stage (single service, pre-traffic), a monolith keeps iteration fast while the layering leaves a clean seam to extract services later if needed.
+
+Key decisions are recorded below in **decision → reasoning → trade-off** form.
+
+### 1. Layered architecture with interface-driven services
+- **Decision:** `Controller → Service (interface + impl) → Repository`, with mappers isolating DTO conversion.
+- **Reasoning:** Single responsibility per layer; services are programmed to interfaces so logic is mockable in tests and implementations are swappable.
+- **Trade-off:** More files/indirection than putting logic in controllers — accepted for testability and clarity.
+
+### 2. DTO-first contracts using Java records
+- **Decision:** Every request/response is an immutable `record`; entities never cross the HTTP boundary.
+- **Reasoning:** Decouples the API contract from the persistence schema, prevents accidental leakage of fields (e.g. password hashes), and gives stable, versionable payloads.
+- **Trade-off:** Requires mapping code — delegated to **MapStruct** (compile-time, no reflection cost).
+
+### 3. Adapter over the `UserDetails` contract
+- **Decision:** `User` stays a plain JPA entity; a `CustomUserDetails` adapter implements `UserDetails`.
+- **Reasoning:** Keeps the persistence model free of any Spring Security dependency (separation of concerns / dependency inversion).
+- **Trade-off:** One small adapter class instead of making the entity implement the framework interface — a deliberate, clean choice.
+
+### 4. Explicit authentication wiring
+- **Decision:** Declare `DaoAuthenticationProvider` + `ProviderManager` beans explicitly instead of consuming the framework's auto-built `AuthenticationManager`.
+- **Reasoning:** Explicit, unit-testable wiring; avoids a self-referential `ProviderManager` parent that can cause a `StackOverflowError`.
+- **Trade-off:** A few extra lines of config in exchange for predictability and control.
+
+### 5. Stateless, token-based security
+- **Decision:** `SessionCreationPolicy.STATELESS`, `BCrypt` password hashing, JWT bearer tokens.
+- **Reasoning:** No server-side session state → horizontally scalable; BCrypt is the standard adaptive password hash.
+- **Trade-off:** Token revocation is harder than server sessions (mitigated later with short expiry + refresh tokens).
+
+### 6. Role-based ownership via `ProjectMember`
+- **Decision:** Model ownership/permissions through a `ProjectMember` join entity (`OWNER`/`EDITOR`/`VIEWER`) with a composite key, rather than an `ownerId` column on `Project`.
+- **Reasoning:** Supports true multi-member collaboration and per-user roles from day one.
+- **Trade-off:** Slightly more complex queries (composite key, joins) than a single owner column.
+
+### 7. Soft deletes + auditing as conventions
+- **Decision:** `deletedAt` for soft deletion and `@CreationTimestamp`/`@UpdateTimestamp` for auditing across core entities; hot query paths are backed by composite indexes.
+- **Reasoning:** Preserves history/recoverability and supports auditability; indexes keep "active rows ordered by recency" reads fast.
+- **Trade-off:** Queries must consistently filter `deletedAt IS NULL`.
+
+### 8. Centralized error handling
+- **Decision:** A `@RestControllerAdvice` (`GlobalExceptionHandler`) maps domain exceptions to a single `ApiError` JSON shape.
+- **Reasoning:** Consistent error contract for clients; no try/catch noise in controllers.
+- **Trade-off:** Exceptions must be modeled deliberately (`BadRequestException`, `ResourceNotFoundException`).
+
+### 9. Externalized, fail-fast configuration
+- **Decision:** Commit config with `${ENV:default}` placeholders; secrets live only in a git-ignored local profile / environment variables; required secrets have **no default**.
+- **Reasoning:** 12-factor portability across environments; a misconfigured deploy fails at startup rather than running insecurely.
+- **Trade-off:** A one-time local setup step (copy the example file).
+
+### Current limitations (intentionally honest)
+- **Endpoints are not yet protected at runtime.** The JWT is *issued* on login, but the **request-side JWT filter** that validates tokens and populates the `SecurityContext` is not wired yet — so authenticated user context is still effectively a placeholder in non-auth controllers. This is the next roadmap item.
+- **No persistence-level tenant isolation yet** beyond service/repository access checks.
+- **No integration tests** against a real database profile yet (planned via Testcontainers).
+
+### How this scales from here
+- Stateless auth ⇒ run **N instances behind a load balancer** with no sticky sessions.
+- File storage targets **object storage (MinIO/S3)**, keeping large blobs out of the database.
+- Previews are designed around **Kubernetes** (namespace/pod per preview).
+- The clean layer boundaries make it straightforward to extract a high-traffic concern (e.g. AI usage) into its own service later.
 
 ---
 
