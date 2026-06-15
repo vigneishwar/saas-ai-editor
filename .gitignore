@@ -32,4 +32,6 @@ build/
 ### VS Code ###
 .vscode/
 
-/src/main/resources/application.yaml
+# Local-only config holding real secrets (DB password, JWT key). Never commit.
+# The committed application.yaml uses ${ENV} placeholders; this file overrides them locally.
+/src/main/resources/application-local.yaml
