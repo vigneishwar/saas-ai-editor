@@ -4,10 +4,14 @@ import com.viki.projects.saas_ai_editor.entity.User;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Date;
 
 @Component
@@ -23,12 +27,34 @@ public class AuthUtil {
     public String generateToken(User user) {
 
         return Jwts.builder()
-                .subject(String.valueOf(user.getId()))
+                .subject(user.getUsername())
                 .claim("userId", user.getId().toString())
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + 1000*60*10)) // 10 minutes
                 .signWith(getSecretKey())
                 .compact();
+    }
+
+    public JwtUserPrincipal verifyToken(String token) {
+        var claims = Jwts.parser()
+                .verifyWith(getSecretKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+
+        Long userId = Long.parseLong(claims.get("userId", String.class));
+        String username = claims.getSubject();
+
+        return new JwtUserPrincipal(userId, username, new ArrayList<>());
+    }
+
+    public Long getUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null || !(authentication.getPrincipal() instanceof JwtUserPrincipal jwtUserPrincipal)) {
+            throw new AuthenticationCredentialsNotFoundException("User is not authenticated");
+        }
+        return jwtUserPrincipal.userId();
     }
 
 }

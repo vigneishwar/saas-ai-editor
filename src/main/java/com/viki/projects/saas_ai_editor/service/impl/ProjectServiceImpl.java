@@ -14,6 +14,7 @@ import com.viki.projects.saas_ai_editor.mapper.ProjectMapper;
 import com.viki.projects.saas_ai_editor.repository.ProjectMemberRepository;
 import com.viki.projects.saas_ai_editor.repository.ProjectRepository;
 import com.viki.projects.saas_ai_editor.repository.UserRepository;
+import com.viki.projects.saas_ai_editor.security.AuthUtil;
 import com.viki.projects.saas_ai_editor.service.ProjectService;
 import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
@@ -34,9 +35,11 @@ public class ProjectServiceImpl implements ProjectService {
     UserRepository userRepository;
     ProjectMapper projectMapper;
     ProjectMemberRepository projectMemberRepository;
+    AuthUtil authUtil;
 
     @Override
-    public List<ProjectSummaryResponse> getProjectsByUserId(Long userId) {
+    public List<ProjectSummaryResponse> getProjectsByUserId() {
+        Long userId = authUtil.getUserId();
         // one way to convert List<Project> to List<ProjectSummaryResponse> is to use stream and map each Project to ProjectSummaryResponse using the mapper
 //        return projectRepository.findAllAccessibleByUser(userId)
 //                .stream()
@@ -48,14 +51,18 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
-    public ProjectResponse getProjectById(Long id, Long userId) {
+    public ProjectResponse getProjectById(Long id) {
+        Long userId = authUtil.getUserId();
         Project project = getAccessibleProjectById(id, userId); // fetch the project with the given id and check if the user has access to it
         return projectMapper.toProjectResponse(project);
     }
 
     @Override
-    public ProjectResponse createProject(ProjectRequest request, Long userId) {
+    public ProjectResponse createProject(ProjectRequest request) {
+        Long userId = authUtil.getUserId();
         User owner = userRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User", userId.toString()));
+
+//        User owner = userRepository.getReferenceById(userId);
 
         Project project = Project.builder()
                 .name(request.name()) // name is coming from request
@@ -77,7 +84,8 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
-    public ProjectResponse updateProject(Long id, ProjectRequest request, Long userId) {
+    public ProjectResponse updateProject(Long id, ProjectRequest request) {
+        Long userId = authUtil.getUserId();
         Project project = getAccessibleProjectById(id, userId); // fetch the project with the given id and check if the user has access to it
 
         project.setName(request.name()); // update the name of the project with the name coming from request
@@ -86,7 +94,8 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
-    public void softDeleteProject(Long id, Long userId) {
+    public void softDeleteProject(Long id) {
+        Long userId = authUtil.getUserId();
         Project project = getAccessibleProjectById(id, userId);
         project.setDeletedAt(java.time.Instant.now()); // set the deletedAt field to the current timestamp to mark the project as deleted
         projectRepository.save(project); // save the updated project to the database

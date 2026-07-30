@@ -12,6 +12,7 @@ import com.viki.projects.saas_ai_editor.mapper.ProjectMemberMapper;
 import com.viki.projects.saas_ai_editor.repository.ProjectMemberRepository;
 import com.viki.projects.saas_ai_editor.repository.ProjectRepository;
 import com.viki.projects.saas_ai_editor.repository.UserRepository;
+import com.viki.projects.saas_ai_editor.security.AuthUtil;
 import com.viki.projects.saas_ai_editor.service.ProjectMemberService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -29,9 +30,11 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
     private final ProjectRepository projectRepository;
     private final ProjectMemberMapper projectMemberMapper;
     private final UserRepository userRepository;
+    private final AuthUtil authUtil;
 
     @Override
-    public List<MemberResponse> getProjectMembers(Long projectId, Long userId) {
+    public List<MemberResponse> getProjectMembers(Long projectId) {
+        Long userId = authUtil.getUserId();
         Project project = getAccessibleProjectById(projectId, userId); // check if the user has access to the project
 
         return (
@@ -42,7 +45,8 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
     }
 
     @Override
-    public MemberResponse inviteMember(Long projectId, InviteMemberRequest request, Long userId) {
+    public MemberResponse inviteMember(Long projectId, InviteMemberRequest request) {
+        Long userId = authUtil.getUserId();
 
         Project project = getAccessibleProjectById(projectId, userId); // check if the user has access to the project
 
@@ -71,7 +75,8 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
     }
 
     @Override
-    public MemberResponse updateMemberRole(Long projectId, Long memberId, UpdateRoleRequest request, Long userId) {
+    public MemberResponse updateMemberRole(Long projectId, Long memberId, UpdateRoleRequest request) {
+        Long userId = authUtil.getUserId();
 
         Project project = getAccessibleProjectById(projectId, userId); // check if the user has access to the project
 
@@ -85,7 +90,8 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
     }
 
     @Override
-    public void removeProjectMember(Long projectId, Long memberId, Long userId) {
+    public void removeProjectMember(Long projectId, Long memberId) {
+        Long userId = authUtil.getUserId();
 
         Project project = getAccessibleProjectById(projectId, userId); // check if the user has access to the project
 
