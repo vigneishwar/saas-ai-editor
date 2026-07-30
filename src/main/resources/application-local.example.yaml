@@ -1,0 +1,20 @@
+# TEMPLATE — committed to git. Copy this file to 'application-local.yaml'
+# (which is git-ignored) and fill in your real local values.
+#
+#   cp src/main/resources/application-local.example.yaml \
+#      src/main/resources/application-local.yaml
+#
+# Then run with the 'local' profile active:  SPRING_PROFILES_ACTIVE=local
+spring:
+  datasource:
+    password: ""          # your local Postgres password (leave empty if none)
+  jpa:
+    show-sql: true
+
+logging:
+  level:
+    org.hibernate.tool.schema: DEBUG
+    org.hibernate.SQL: DEBUG
+
+jwt:
+  secret-key: replace-me-with-a-long-random-dev-secret

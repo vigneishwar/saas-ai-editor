@@ -7,12 +7,12 @@ import com.viki.projects.saas_ai_editor.dto.project.ProjectSummaryResponse;
 import java.util.List;
 
 public interface ProjectService {
-    List<ProjectSummaryResponse> getProjectsByUserId(Long userId);
-    ProjectResponse getProjectById(Long id, Long userId);
+    List<ProjectSummaryResponse> getProjectsByUserId();
+    ProjectResponse getProjectById(Long id);
 
-    ProjectResponse createProject(ProjectRequest request, Long userId);
+    ProjectResponse createProject(ProjectRequest request);
 
-    ProjectResponse updateProject(Long id, ProjectRequest request, Long userId);
+    ProjectResponse updateProject(Long id, ProjectRequest request);
 
-    void softDeleteProject(Long id, Long userId);
+    void softDeleteProject(Long id);
 }

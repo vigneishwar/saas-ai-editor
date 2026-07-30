@@ -16,6 +16,11 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
             """
             SELECT p FROM Project p
             WHERE p.deletedAt IS NULL
+                        and exists (
+                            SELECT 1 FROM ProjectMember pm
+                            WHERE pm.id.userId = :userId
+                            and pm.id.projectId = p.id
+                                    )
             ORDER BY p.updatedAt DESC
             """
     ) // Project is the entity name, not the table name. Always use the entity name in JPQL queries and not the table name.
@@ -26,6 +31,11 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
             select p from Project p
             where p.id = :projectId
             and p.deletedAt IS NULL
+            and exists (
+                select 1 from ProjectMember pm
+                where pm.id.userId = :userId
+                and pm.id.projectId = :projectId
+            )
             """
     ) // This query will fetch the project with the given projectId only if it is not deleted and the owner of the project
     // has the given userId. The left join fetch is used to fetch the owner of the project in the same query to avoid lazy
