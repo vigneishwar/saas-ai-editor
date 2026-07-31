@@ -8,7 +8,6 @@ import com.viki.projects.saas_ai_editor.error.BadRequestException;
 import com.viki.projects.saas_ai_editor.mapper.UserMapper;
 import com.viki.projects.saas_ai_editor.repository.UserRepository;
 import com.viki.projects.saas_ai_editor.security.AuthUtil;
-import com.viki.projects.saas_ai_editor.security.CustomUserDetails;
 import com.viki.projects.saas_ai_editor.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -55,10 +54,7 @@ public class AuthServiceImpl implements AuthService {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.username(), request.password())
             );
-            if (!(authentication.getPrincipal() instanceof CustomUserDetails userDetails)) {
-                throw new BadRequestException("Authentication principal is not of type CustomUserDetails");
-            }
-            User user = userDetails.getUser();
+            User user = (User) authentication.getPrincipal();
             String token = authUtil.generateToken(user);
             log.info("User {} logged in successfully", user.getUsername());
             return new AuthResponse(token, userMapper.userToUserProfileResponse(user));
