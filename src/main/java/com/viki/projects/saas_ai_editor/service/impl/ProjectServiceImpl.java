@@ -20,6 +20,9 @@ import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import org.springframework.data.repository.query.Param;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -29,6 +32,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Transactional
+@EnableMethodSecurity
 public class ProjectServiceImpl implements ProjectService {
 
     ProjectRepository projectRepository;
@@ -51,9 +55,10 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
-    public ProjectResponse getProjectById(Long id) {
+    @PreAuthorize("@securityExpressions.canViewProject(#projectId)")
+    public ProjectResponse getProjectById(Long projectId) {
         Long userId = authUtil.getUserId();
-        Project project = getAccessibleProjectById(id, userId); // fetch the project with the given id and check if the user has access to it
+        Project project = getAccessibleProjectById(projectId, userId); // fetch the project with the given id and check if the user has access to it
         return projectMapper.toProjectResponse(project);
     }
 
@@ -84,9 +89,10 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
-    public ProjectResponse updateProject(Long id, ProjectRequest request) {
+    @PreAuthorize("@securityExpressions.canEditProject(#projectId)")
+    public ProjectResponse updateProject(Long projectId, ProjectRequest request) {
         Long userId = authUtil.getUserId();
-        Project project = getAccessibleProjectById(id, userId); // fetch the project with the given id and check if the user has access to it
+        Project project = getAccessibleProjectById(projectId, userId); // fetch the project with the given id and check if the user has access to it
 
         project.setName(request.name()); // update the name of the project with the name coming from request
         project = projectRepository.save(project); // save the updated project to the database
@@ -94,9 +100,10 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
-    public void softDeleteProject(Long id) {
+    @PreAuthorize("@securityExpressions.canDeleteProject(#projectId)")
+    public void softDeleteProject(Long projectId) {
         Long userId = authUtil.getUserId();
-        Project project = getAccessibleProjectById(id, userId);
+        Project project = getAccessibleProjectById(projectId, userId);
         project.setDeletedAt(java.time.Instant.now()); // set the deletedAt field to the current timestamp to mark the project as deleted
         projectRepository.save(project); // save the updated project to the database
 
@@ -104,8 +111,8 @@ public class ProjectServiceImpl implements ProjectService {
 
     // This is a helper method to fetch a project by id and check if the user has access to it.
     // If the project is not found or the user does not have access, it will throw an exception.
-    private Project getAccessibleProjectById(Long id, Long userId) {
-        return projectRepository.findAccessibleProjectById(id, userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Project", id.toString()));
+    private Project getAccessibleProjectById(Long projectId, Long userId) {
+        return projectRepository.findAccessibleProjectById(projectId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Project", projectId.toString()));
     }
 }
