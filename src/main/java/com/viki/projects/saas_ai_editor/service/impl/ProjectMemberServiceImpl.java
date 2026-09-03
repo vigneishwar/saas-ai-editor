@@ -15,6 +15,8 @@ import com.viki.projects.saas_ai_editor.repository.UserRepository;
 import com.viki.projects.saas_ai_editor.security.AuthUtil;
 import com.viki.projects.saas_ai_editor.service.ProjectMemberService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -24,6 +26,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@EnableMethodSecurity
 public class ProjectMemberServiceImpl implements ProjectMemberService {
 
     private final ProjectMemberRepository projectMemberRepository;
@@ -33,6 +36,7 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
     private final AuthUtil authUtil;
 
     @Override
+    @PreAuthorize("@securityExpressions.canViewProjectMembers(#projectId)")
     public List<MemberResponse> getProjectMembers(Long projectId) {
         Long userId = authUtil.getUserId();
         Project project = getAccessibleProjectById(projectId, userId); // check if the user has access to the project
@@ -45,6 +49,7 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
     }
 
     @Override
+    @PreAuthorize("@securityExpressions.canManageProjectMembers(#projectId)")
     public MemberResponse inviteMember(Long projectId, InviteMemberRequest request) {
         Long userId = authUtil.getUserId();
 
@@ -75,6 +80,7 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
     }
 
     @Override
+    @PreAuthorize("@securityExpressions.canManageProjectMembers(#projectId)")
     public MemberResponse updateMemberRole(Long projectId, Long memberId, UpdateRoleRequest request) {
         Long userId = authUtil.getUserId();
 
@@ -90,6 +96,7 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
     }
 
     @Override
+    @PreAuthorize("@securityExpressions.canManageProjectMembers(#projectId)")
     public void removeProjectMember(Long projectId, Long memberId) {
         Long userId = authUtil.getUserId();
 
