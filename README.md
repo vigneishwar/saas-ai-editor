@@ -175,7 +175,7 @@ Key decisions are recorded below in **decision → reasoning → trade-off** for
 - **Trade-off:** A one-time local setup step (copy the example file).
 
 ### Current limitations (intentionally honest)
-- **Authorization enforcement is still expanding.** The request-side JWT filter now validates tokens and populates the `SecurityContext`, and project view/edit/delete are guarded by `@PreAuthorize` RBAC. Member-management and file/billing/usage endpoints still need their own permission checks (e.g. `MANAGE_MEMBERS`).
+- **Authorization enforcement is still expanding.** The request-side JWT filter now validates tokens and populates the `SecurityContext`, and project view/edit/delete plus member view/management are guarded by `@PreAuthorize` RBAC. File, billing, and usage endpoints still need their own permission checks.
 - **No persistence-level tenant isolation yet** beyond service/repository access checks and method-level RBAC.
 - **No integration tests** against a real database profile yet (planned via Testcontainers).
 
@@ -467,7 +467,8 @@ src/main/java/com/viki/projects/saas_ai_editor
 
 - [x] JWT authentication **filter** to populate `SecurityContext` and protect `/api/**`
 - [x] Method-level RBAC (`@PreAuthorize`) on project view/edit/delete
-- [ ] Extend RBAC to member-management (`MANAGE_MEMBERS`) and file/billing/usage endpoints
+- [x] Extend RBAC to member-management (`VIEW_MEMBERS` / `MANAGE_MEMBERS`)
+- [ ] Extend RBAC to file/billing/usage endpoints
 - [ ] `GET /auth/me` and member role-update / removal logic
 - [ ] File service + MinIO object storage integration
 - [ ] Stripe billing: checkout, customer portal, subscription sync

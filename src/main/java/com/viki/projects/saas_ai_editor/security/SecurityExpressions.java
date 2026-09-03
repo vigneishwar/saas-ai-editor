@@ -25,6 +25,14 @@ public class SecurityExpressions {
         return hasPermissions(projectId, ProjectPermission.VIEW);
     }
 
+    public boolean canViewProjectMembers(Long projectId) {
+        return hasPermissions(projectId, ProjectPermission.VIEW_MEMBERS);
+    }
+
+    public boolean canManageProjectMembers(Long projectId) {
+        return hasPermissions(projectId, ProjectPermission.MANAGE_MEMBERS);
+    }
+
     public boolean canEditProject(Long projectId) {
         return hasPermissions(projectId, ProjectPermission.EDIT);
     }
