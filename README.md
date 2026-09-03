@@ -49,8 +49,8 @@ Each layer has a single responsibility, DTOs form explicit API contracts, and cr
 
 These are the parts of the codebase worth looking at in an interview context:
 
-- **🔐 Stateless JWT authentication** — full signup/login flow on Spring Security 6/7 with `BCrypt`, a custom `UserDetailsService`, and an explicitly-wired `DaoAuthenticationProvider` + `ProviderManager` (no reliance on the auto-built global manager).
-- **🧩 Clean adapter over coupling** — the JPA `User` entity is *not* coupled to Spring Security. A `CustomUserDetails` adapter wraps it, keeping the persistence model and the security framework independent.
+- **🔐 Stateless JWT authentication** — full signup/login flow on Spring Security 6/7 with `BCrypt`, a `UserDetailsService`, and an `AuthenticationManager` sourced from Spring's `AuthenticationConfiguration`.
+- **🛂 Method-level RBAC** — project actions are guarded by `@PreAuthorize` expressions backed by a `SecurityExpressions` bean, mapping `ProjectRole` (`OWNER`/`EDITOR`/`VIEWER`) onto fine-grained `ProjectPermission`s (`VIEW`/`EDIT`/`DELETE`/`MANAGE_MEMBERS`).
 - **📦 DTO-first API contracts** — every request/response is a Java `record`; entities never leak across the HTTP boundary. MapStruct generates the entity↔DTO mappings at compile time.
 - **⚙️ 12-Factor configuration** — config is committed with `${ENV:default}` placeholders; real secrets live only in a git-ignored profile file locally and in environment variables / a secrets manager in production. The app **fails fast** if a required secret is missing.
 - **🛡️ Centralized error handling** — a `@RestControllerAdvice` translates domain exceptions into a consistent `ApiError` JSON shape.
@@ -118,7 +118,7 @@ flowchart LR
 | `dto` | Immutable API contracts (`record`s), grouped by domain |
 | `entity` | JPA persistence models |
 | `enums` | Domain enums (`ProjectRole`, `MessageRole`, …) |
-| `security` | JWT, `UserDetails` adapter, `SecurityConfig` |
+| `security` | JWT, `SecurityConfig`, `SecurityExpressions` (`@PreAuthorize` RBAC) |
 | `error` | `ApiError`, domain exceptions, global handler |
 
 ---
@@ -139,25 +139,25 @@ Key decisions are recorded below in **decision → reasoning → trade-off** for
 - **Reasoning:** Decouples the API contract from the persistence schema, prevents accidental leakage of fields (e.g. password hashes), and gives stable, versionable payloads.
 - **Trade-off:** Requires mapping code — delegated to **MapStruct** (compile-time, no reflection cost).
 
-### 3. Adapter over the `UserDetails` contract
-- **Decision:** `User` stays a plain JPA entity; a `CustomUserDetails` adapter implements `UserDetails`.
-- **Reasoning:** Keeps the persistence model free of any Spring Security dependency (separation of concerns / dependency inversion).
-- **Trade-off:** One small adapter class instead of making the entity implement the framework interface — a deliberate, clean choice.
+### 3. `User` implements `UserDetails` directly
+- **Decision:** The JPA `User` entity implements Spring Security's `UserDetails`, and `UserServiceImpl` implements `UserDetailsService`.
+- **Reasoning:** Removes an extra adapter layer and a separate service class; the authenticated principal *is* the domain user, so downstream code casts straight to `User` without unwrapping.
+- **Trade-off:** The persistence model gains a light Spring Security dependency — accepted for a simpler, flatter object graph.
 
-### 4. Explicit authentication wiring
-- **Decision:** Declare `DaoAuthenticationProvider` + `ProviderManager` beans explicitly instead of consuming the framework's auto-built `AuthenticationManager`.
-- **Reasoning:** Explicit, unit-testable wiring; avoids a self-referential `ProviderManager` parent that can cause a `StackOverflowError`.
-- **Trade-off:** A few extra lines of config in exchange for predictability and control.
+### 4. `AuthenticationManager` from `AuthenticationConfiguration`
+- **Decision:** Expose the `AuthenticationManager` via Spring's `AuthenticationConfiguration.getAuthenticationManager()` instead of hand-building a `DaoAuthenticationProvider` + `ProviderManager`.
+- **Reasoning:** Lets the framework wire the provider from the registered `UserDetailsService` + `PasswordEncoder`, cutting boilerplate and avoiding a self-referential `ProviderManager` pitfall.
+- **Trade-off:** Slightly less explicit than declaring each bean by hand — accepted for the framework-idiomatic path.
 
 ### 5. Stateless, token-based security
 - **Decision:** `SessionCreationPolicy.STATELESS`, `BCrypt` password hashing, JWT bearer tokens.
 - **Reasoning:** No server-side session state → horizontally scalable; BCrypt is the standard adaptive password hash.
 - **Trade-off:** Token revocation is harder than server sessions (mitigated later with short expiry + refresh tokens).
 
-### 6. Role-based ownership via `ProjectMember`
-- **Decision:** Model ownership/permissions through a `ProjectMember` join entity (`OWNER`/`EDITOR`/`VIEWER`) with a composite key, rather than an `ownerId` column on `Project`.
-- **Reasoning:** Supports true multi-member collaboration and per-user roles from day one.
-- **Trade-off:** Slightly more complex queries (composite key, joins) than a single owner column.
+### 6. Role-based ownership via `ProjectMember` + method-level RBAC
+- **Decision:** Model ownership/permissions through a `ProjectMember` join entity (`OWNER`/`EDITOR`/`VIEWER`) with a composite key, rather than an `ownerId` column on `Project`. Each `ProjectRole` maps to a set of fine-grained `ProjectPermission`s, and service methods are guarded with `@PreAuthorize("@securityExpressions.canEditProject(#projectId)")`-style checks.
+- **Reasoning:** Supports true multi-member collaboration and per-user roles from day one; centralizing the role→permission mapping and enforcing it declaratively keeps authorization logic out of the business methods.
+- **Trade-off:** Slightly more complex queries (composite key, joins) than a single owner column, plus a per-call role lookup — accepted for expressive, centralized access control.
 
 ### 7. Soft deletes + auditing as conventions
 - **Decision:** `deletedAt` for soft deletion and `@CreationTimestamp`/`@UpdateTimestamp` for auditing across core entities; hot query paths are backed by composite indexes.
@@ -175,8 +175,8 @@ Key decisions are recorded below in **decision → reasoning → trade-off** for
 - **Trade-off:** A one-time local setup step (copy the example file).
 
 ### Current limitations (intentionally honest)
-- **Endpoints are not yet protected at runtime.** The JWT is *issued* on login, but the **request-side JWT filter** that validates tokens and populates the `SecurityContext` is not wired yet — so authenticated user context is still effectively a placeholder in non-auth controllers. This is the next roadmap item.
-- **No persistence-level tenant isolation yet** beyond service/repository access checks.
+- **Authorization enforcement is still expanding.** The request-side JWT filter now validates tokens and populates the `SecurityContext`, and project view/edit/delete are guarded by `@PreAuthorize` RBAC. Member-management and file/billing/usage endpoints still need their own permission checks (e.g. `MANAGE_MEMBERS`).
+- **No persistence-level tenant isolation yet** beyond service/repository access checks and method-level RBAC.
 - **No integration tests** against a real database profile yet (planned via Testcontainers).
 
 ### How this scales from here
@@ -193,8 +193,9 @@ Authentication is the most complete vertical slice and showcases deliberate Spri
 
 ### Design decisions
 
-- **The entity stays decoupled.** `User` is a plain JPA entity. A `CustomUserDetails` **adapter** implements `UserDetails` and wraps the entity, so Spring Security depends only on the `UserDetails` contract — never on the persistence model.
-- **Explicit authentication wiring.** Instead of pulling the framework's auto-built `AuthenticationManager`, the app declares its own `DaoAuthenticationProvider` and `ProviderManager`. This is explicit, unit-testable, and avoids a class of self-referential `StackOverflowError` pitfalls.
+- **The principal is the domain user.** `User` implements `UserDetails` directly and `UserServiceImpl` implements `UserDetailsService`, so the authenticated principal *is* the `User` — no adapter to unwrap.
+- **Framework-wired authentication.** The `AuthenticationManager` is obtained from Spring's `AuthenticationConfiguration`, which assembles the provider from the registered `UserDetailsService` + `BCryptPasswordEncoder` — minimal boilerplate, no self-referential `ProviderManager` pitfall.
+- **Method-level RBAC.** Beyond authentication, project actions are authorized with `@PreAuthorize` expressions resolved by a `SecurityExpressions` bean that maps `ProjectRole` to `ProjectPermission`s.
 - **Stateless & hashed.** Sessions are `STATELESS`; passwords are hashed with `BCrypt`; the API is consumed with a `Bearer` JWT.
 
 ### Login flow
@@ -205,9 +206,9 @@ sequenceDiagram
     participant C as Client
     participant AC as AuthController
     participant AS as AuthServiceImpl
-    participant AM as AuthenticationManager<br/>(ProviderManager)
+    participant AM as AuthenticationManager<br/>(from AuthenticationConfiguration)
     participant DP as DaoAuthenticationProvider
-    participant UDS as CustomUserDetailsService
+    participant UDS as UserServiceImpl<br/>(UserDetailsService)
     participant DB as PostgreSQL
     participant JWT as AuthUtil (JJWT)
 
@@ -217,10 +218,10 @@ sequenceDiagram
     AM->>DP: authenticate
     DP->>UDS: loadUserByUsername(username)
     UDS->>DB: findByUsername(...)
-    DB-->>UDS: User
-    UDS-->>DP: CustomUserDetails (adapter)
+    DB-->>UDS: User (implements UserDetails)
+    UDS-->>DP: User
     DP->>DP: BCrypt.matches(raw, hash)
-    DP-->>AM: Authentication (principal = CustomUserDetails)
+    DP-->>AM: Authentication (principal = User)
     AM-->>AS: Authentication
     AS->>JWT: generateToken(user)
     JWT-->>AS: signed JWT
@@ -232,9 +233,10 @@ sequenceDiagram
 
 | Component | Role |
 |---|---|
-| `SecurityConfig` | Filter chain (stateless), `BCryptPasswordEncoder`, `DaoAuthenticationProvider`, `ProviderManager` |
-| `CustomUserDetailsService` | Loads a `User` and returns a `CustomUserDetails` |
-| `CustomUserDetails` | Adapter exposing only `username`/`password`/authorities to the framework |
+| `SecurityConfig` | Filter chain (stateless), `BCryptPasswordEncoder`, `AuthenticationManager` from `AuthenticationConfiguration` |
+| `UserServiceImpl` | Implements `UserDetailsService`; loads a `User` by username |
+| `User` | JPA entity implementing `UserDetails` — the authenticated principal |
+| `SecurityExpressions` | `@PreAuthorize` target mapping `ProjectRole` → `ProjectPermission` for RBAC |
 | `AuthUtil` | Signs/issues JWTs with a configurable secret + expiry |
 
 ---
@@ -454,8 +456,8 @@ src/main/java/com/viki/projects/saas_ai_editor
 ├── mapper/          # MapStruct
 ├── dto/             # API contracts (records): auth · project · member · subscription
 ├── entity/          # JPA models
-├── enums/           # domain enums
-├── security/        # JWT, UserDetails adapter, SecurityConfig
+├── enums/           # domain enums (ProjectRole, ProjectPermission, …)
+├── security/        # JWT, SecurityConfig, SecurityExpressions (RBAC)
 └── error/           # ApiError + global handler
 ```
 
@@ -463,7 +465,9 @@ src/main/java/com/viki/projects/saas_ai_editor
 
 ## Roadmap
 
-- [ ] JWT authentication **filter** to populate `SecurityContext` and protect `/api/**` (replace remaining placeholder user context)
+- [x] JWT authentication **filter** to populate `SecurityContext` and protect `/api/**`
+- [x] Method-level RBAC (`@PreAuthorize`) on project view/edit/delete
+- [ ] Extend RBAC to member-management (`MANAGE_MEMBERS`) and file/billing/usage endpoints
 - [ ] `GET /auth/me` and member role-update / removal logic
 - [ ] File service + MinIO object storage integration
 - [ ] Stripe billing: checkout, customer portal, subscription sync
