@@ -31,15 +31,15 @@ public class BillingController {
         return ResponseEntity.ok(subscriptionService.getSubscriptionByUserId(userId));
     }
 
-    @PostMapping("/api/stripe/checkout")
+    @PostMapping("/api/payments/checkout")
     public ResponseEntity<CheckoutResponse>createCheckoutResponse(@RequestBody CheckoutRequest request){
-        Long userId = 1L; // TODO: get user id from auth context
-        CheckoutResponse response = subscriptionService.createCheckoutSessionUrl(request, userId);
+
+        CheckoutResponse response = subscriptionService.createCheckoutSessionUrl(request);
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/api/stripe/portal")
-    public ResponseEntity<StripePortalResponse> openCustomerPortal(){
+    @PostMapping("/api/payments/portal")
+    public ResponseEntity<PortalResponse> openCustomerPortal(){
         Long userId = 1L;
         return ResponseEntity.ok(subscriptionService.openCustomerPortal(userId));
     }

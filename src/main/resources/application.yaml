@@ -31,3 +31,6 @@ jwt:
   # No default on purpose: the app must fail fast if the secret isn't provided.
   # Supplied locally via application-local.yaml, in prod via the JWT_SECRET_KEY env var.
   secret-key: ${JWT_SECRET_KEY}
+
+stripe:
+  secret-key: ${STRIPE_SECRET_KEY}

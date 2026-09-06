@@ -363,8 +363,8 @@ Base path: `/api`
 | GET | `/projects/{projectId}/files/{*path}` | ⬜ | File content |
 | GET | `/plans` | ⬜ | Available plans |
 | GET | `/me/subscription` | ⬜ | Current subscription |
-| POST | `/stripe/checkout` | ⬜ | Create checkout session |
-| POST | `/stripe/portal` | ⬜ | Customer portal link |
+| POST | `/payments/checkout` | 🟡 | Create checkout session (Stripe wired, logic pending) |
+| POST | `/payments/portal` | 🟡 | Customer portal link (Stripe wired, logic pending) |
 | GET | `/usage/today` | ⬜ | Today's usage |
 | GET | `/usage/limits` | ⬜ | Plan limits |
 

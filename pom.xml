@@ -80,6 +80,13 @@
 			<scope>runtime</scope>
 		</dependency>
 
+		<!-- Source: https://mvnrepository.com/artifact/com.stripe/stripe-java -->
+		<dependency>
+			<groupId>com.stripe</groupId>
+			<artifactId>stripe-java</artifactId>
+			<version>33.4.1</version>
+		</dependency>
+
 		<!-- Source: https://mvnrepository.com/artifact/io.jsonwebtoken/jjwt-jackson -->
 		<dependency>
 			<groupId>io.jsonwebtoken</groupId>
