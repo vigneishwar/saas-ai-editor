@@ -5,11 +5,12 @@ import com.stripe.Stripe;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.stereotype.Component;
 
 @Configuration
 public class PaymentConfig {
 
-    @Value("${STRIPE_SECRET_KEY}")
+    @Value("${stripe.secret-key}")
     private String stripeSecretKey;
 
     @PostConstruct

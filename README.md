@@ -363,8 +363,8 @@ Base path: `/api`
 | GET | `/projects/{projectId}/files/{*path}` | ⬜ | File content |
 | GET | `/plans` | ⬜ | Available plans |
 | GET | `/me/subscription` | ⬜ | Current subscription |
-| POST | `/payments/checkout` | 🟡 | Create checkout session (Stripe wired, logic pending) |
-| POST | `/payments/portal` | 🟡 | Customer portal link (Stripe wired, logic pending) |
+| POST | `/payments/checkout` | ✅ | Create Stripe checkout session for a plan |
+| POST | `/payments/portal` | 🟡 | Customer portal link (wired, logic pending) |
 | GET | `/usage/today` | ⬜ | Today's usage |
 | GET | `/usage/limits` | ⬜ | Plan limits |
 
@@ -471,7 +471,8 @@ src/main/java/com/viki/projects/saas_ai_editor
 - [ ] Extend RBAC to file/billing/usage endpoints
 - [ ] `GET /auth/me` and member role-update / removal logic
 - [ ] File service + MinIO object storage integration
-- [ ] Stripe billing: checkout, customer portal, subscription sync
+- [x] Stripe billing: checkout session creation
+- [ ] Stripe billing: customer portal + subscription sync (webhooks)
 - [ ] Usage tracking + quota enforcement against `Plan` limits
 - [ ] Live previews via Kubernetes
 - [ ] Integration tests on an isolated `test` profile (Testcontainers)

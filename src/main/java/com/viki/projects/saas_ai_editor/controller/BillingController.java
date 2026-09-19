@@ -2,6 +2,7 @@ package com.viki.projects.saas_ai_editor.controller;
 
 
 import com.viki.projects.saas_ai_editor.dto.subscription.*;
+import com.viki.projects.saas_ai_editor.service.PaymentProcessor;
 import com.viki.projects.saas_ai_editor.service.PlanService;
 import com.viki.projects.saas_ai_editor.service.SubscriptionService;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +20,7 @@ public class BillingController {
 
     private final PlanService planService;
     private final SubscriptionService subscriptionService;
+    private final PaymentProcessor paymentProcessor;
 
     @GetMapping("/api/plans")
     public ResponseEntity<List<PlanResponse>> getAvailablePlans() {
@@ -34,14 +36,14 @@ public class BillingController {
     @PostMapping("/api/payments/checkout")
     public ResponseEntity<CheckoutResponse>createCheckoutResponse(@RequestBody CheckoutRequest request){
 
-        CheckoutResponse response = subscriptionService.createCheckoutSessionUrl(request);
+        CheckoutResponse response = paymentProcessor.createCheckoutSessionUrl(request);
         return ResponseEntity.ok(response);
     }
 
     @PostMapping("/api/payments/portal")
     public ResponseEntity<PortalResponse> openCustomerPortal(){
         Long userId = 1L;
-        return ResponseEntity.ok(subscriptionService.openCustomerPortal(userId));
+        return ResponseEntity.ok(paymentProcessor.openCustomerPortal(userId));
     }
 }
 

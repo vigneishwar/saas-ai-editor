@@ -1,0 +1,46 @@
+# =============================================================================
+# TEST configuration.
+#
+# Spring Boot loads this file (from src/test/resources) INSTEAD OF the main
+# src/main/resources/application.yaml whenever tests run. It exists so that
+# @SpringBootTest can boot the full application context WITHOUT needing a real
+# Postgres database, real Stripe keys, or real JWT secrets.
+#
+# Everything here is throwaway and safe to commit: fake secrets + an in-memory
+# database that is created fresh for the test run and discarded afterwards.
+# =============================================================================
+
+spring:
+  application:
+    name: saas-ai-editor-test
+
+  # In-memory H2 database. 'DB_CLOSE_DELAY=-1' keeps it alive for the whole
+  # test JVM. We deliberately do NOT use 'MODE=PostgreSQL' here: that mode makes
+  # H2 reject types Postgres lacks (e.g. TINYINT, which Hibernate emits for
+  # ORDINAL enum columns), which would break schema creation. Native H2 mode
+  # supports those types, so the schema builds cleanly for tests.
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+
+  jpa:
+    hibernate:
+      # 'create-drop' builds the schema from your @Entity classes at startup
+      # and drops it at shutdown. No migrations, no manual DB setup for tests.
+      ddl-auto: create-drop
+    # Tell Hibernate to generate H2 SQL, not Postgres SQL.
+    database-platform: org.hibernate.dialect.H2Dialect
+    show-sql: false
+
+# Dummy values for the three secrets the app requires at startup. The real
+# ones live outside the repo; these just let the context load during tests.
+jwt:
+  secret-key: "test-secret-key-not-used-for-real-signing-0123456789abcdef"
+
+stripe:
+  secret-key: "sk_test_dummy_value_for_context_loading_only"
+
+client:
+  url: "http://localhost:3000"
