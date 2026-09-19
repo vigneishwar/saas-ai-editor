@@ -105,6 +105,21 @@
 			<scope>provided</scope>
 		</dependency>
 
+		<!-- DevTools: auto-restarts the app when compiled classes change (fast inner loop) -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-devtools</artifactId>
+			<scope>runtime</scope>
+			<optional>true</optional>
+		</dependency>
+
+		<!-- H2: in-memory database used ONLY by tests, so tests need no real Postgres -->
+		<dependency>
+			<groupId>com.h2database</groupId>
+			<artifactId>h2</artifactId>
+			<scope>test</scope>
+		</dependency>
+
 		<!-- Testing -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

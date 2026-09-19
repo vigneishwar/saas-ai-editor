@@ -34,3 +34,6 @@ jwt:
 
 stripe:
   secret-key: ${STRIPE_SECRET_KEY}
+
+client:
+  url: ${CLIENT_URL}
