@@ -11,6 +11,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.servlet.HandlerExceptionResolver;
 
 import java.io.IOException;
 
@@ -20,31 +21,38 @@ import java.io.IOException;
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final AuthUtil authUtil;
+    private final HandlerExceptionResolver handlerExceptionResolver;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-        log.info("incoming request: {}", request.getRequestURI());
+        try {
 
-        final String authorizationHeader = request.getHeader("Authorization");
-        if(authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
-            filterChain.doFilter(request, response);
-            return;
-        }
+            log.info("incoming request: {}", request.getRequestURI());
 
-        String token = authorizationHeader.substring(7);
+            final String authorizationHeader = request.getHeader("Authorization");
+            if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
+                filterChain.doFilter(request, response);
+                return;
+            }
+
+            String token = authorizationHeader.substring(7);
 
 //        String token = authorizationHeader.split("Bearer")[1]; // This line is commented out because it would throw
 //        an ArrayIndexOutOfBoundsException if the header doesn't contain "Bearer" followed by a space and the token.
 //        The previous line using substring is safer.
 
-        JwtUserPrincipal jwtUserPrincipal = authUtil.verifyToken(token);
-        if(jwtUserPrincipal != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
-                    jwtUserPrincipal, null, jwtUserPrincipal.authorities()
-            );
+            JwtUserPrincipal jwtUserPrincipal = authUtil.verifyToken(token);
+            if (jwtUserPrincipal != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
+                        jwtUserPrincipal, null, jwtUserPrincipal.authorities()
+                );
 
-            SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+                SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+            }
+            filterChain.doFilter(request, response);
+        }catch (Exception e) {
+            log.error("Error in JwtAuthFilter: ", e);
+            handlerExceptionResolver.resolveException(request, response, null, e);
         }
-        filterChain.doFilter(request, response);
     }
 }
